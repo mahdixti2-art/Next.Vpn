@@ -21,13 +21,14 @@
         .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
         .support-menu { transform-origin: bottom right; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        input[type="range"] { cursor: pointer; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
         function App() {
             const [step, setStep] = useState(1);
@@ -37,7 +38,7 @@
             const [adminPass, setAdminPass] = useState('');
             const [showSupportMenu, setShowSupportMenu] = useState(false);
 
-            // State for Plan
+            // Plan State
             const [months, setMonths] = useState(1);
             const [volume, setVolume] = useState(10);
             const [contact, setContact] = useState('');
@@ -47,6 +48,10 @@
             const [loading, setLoading] = useState(false);
             const [isSuccess, setIsSuccess] = useState(false);
 
+            // Discount State
+            const [promoInput, setPromoInput] = useState('');
+            const [isPromoApplied, setIsPromoApplied] = useState(false);
+
             // Configuration
             const [config, setConfig] = useState({
                 basePrice: 30000,
@@ -54,13 +59,18 @@
                 cardNumber: "6219861908913584",
                 cardName: "ملیحه مختاری",
                 supportUrl: "https://t.me/Mahdi4F",
-                whatsappNumber: "989033708860"
+                whatsappNumber: "989033708860",
+                promoCode: "NEXT",
+                promoPercent: 15
             });
 
             const BOT_TOKEN = "8302811186:AAEMBp9XhMGiW4WaBNF-F59BeDGa_gHV1To";
             const CHAT_ID = "8474397291";
 
-            const totalPrice = (months * config.basePrice) + (volume * config.perGbPrice);
+            // Price Calculation
+            const baseTotal = (months * config.basePrice) + (volume * config.perGbPrice);
+            const discountAmount = isPromoApplied ? (baseTotal * config.promoPercent / 100) : 0;
+            const finalPrice = baseTotal - discountAmount;
 
             const handleImageChange = (e) => {
                 const file = e.target.files[0];
@@ -79,8 +89,17 @@
                 document.body.removeChild(el);
             };
 
+            const applyPromo = () => {
+                if (promoInput.trim().toUpperCase() === config.promoCode.toUpperCase()) {
+                    setIsPromoApplied(true);
+                } else {
+                    alert('کد تخفیف معتبر نیست');
+                    setIsPromoApplied(false);
+                }
+            };
+
             const getOrderDetails = () => {
-                return `🚀 سفارش جدید نکس‌وی‌پی‌ان\n━━━━━━━━━━━━━━\n📅 مدت: ${months} ماه\n💾 حجم: ${volume} گیگ\n💰 مبلغ: ${totalPrice.toLocaleString()} تومان\n👤 کاربر: ${contact}`;
+                return `🚀 سفارش جدید نکس‌وی‌پی‌ان\n━━━━━━━━━━━━━━\n📅 مدت: ${months} ماه\n💾 حجم: ${volume} گیگ\n💰 مبلغ نهایی: ${finalPrice.toLocaleString()} تومان${isPromoApplied ? `\n🎁 تخفیف اعمال شده: ${config.promoPercent}%` : ''}\n👤 کاربر: ${contact}`;
             };
 
             const handleSubmit = async () => {
@@ -125,14 +144,18 @@
             if (isAdmin) {
                 return (
                     <div className="min-h-screen p-6 flex flex-col items-center animate-in">
-                        <div className="glass p-8 rounded-[2rem] max-w-md w-full text-right">
+                        <div className="glass p-8 rounded-[2rem] max-w-md w-full text-right overflow-y-auto max-h-[90vh]">
                             <h2 className="text-2xl font-bold mb-6 text-center text-sky-400">تنظیمات مدیریت</h2>
                             <div className="space-y-4">
                                 <div><label className="text-xs text-slate-400">قیمت پایه ماهانه</label><input type="number" value={config.basePrice} onChange={e=>setConfig({...config, basePrice: parseInt(e.target.value)})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center" /></div>
                                 <div><label className="text-xs text-slate-400">قیمت هر گیگ</label><input type="number" value={config.perGbPrice} onChange={e=>setConfig({...config, perGbPrice: parseInt(e.target.value)})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center" /></div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div><label className="text-xs text-slate-400">کد تخفیف</label><input type="text" value={config.promoCode} onChange={e=>setConfig({...config, promoCode: e.target.value})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center font-bold" /></div>
+                                    <div><label className="text-xs text-slate-400">درصد تخفیف (%)</label><input type="number" value={config.promoPercent} onChange={e=>setConfig({...config, promoPercent: parseInt(e.target.value)})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center" /></div>
+                                </div>
                                 <div><label className="text-xs text-slate-400">شماره کارت</label><input type="text" value={config.cardNumber} onChange={e=>setConfig({...config, cardNumber: e.target.value})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center tracking-widest" /></div>
                                 <div><label className="text-xs text-slate-400">نام صاحب کارت</label><input type="text" value={config.cardName} onChange={e=>setConfig({...config, cardName: e.target.value})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center" /></div>
-                                <div><label className="text-xs text-slate-400">شماره واتساپ (مثال: 989033708860)</label><input type="text" value={config.whatsappNumber} onChange={e=>setConfig({...config, whatsappNumber: e.target.value})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center tracking-tighter" placeholder="بدون علامت +" /></div>
+                                <div><label className="text-xs text-slate-400">شماره واتساپ</label><input type="text" value={config.whatsappNumber} onChange={e=>setConfig({...config, whatsappNumber: e.target.value})} className="w-full bg-slate-900 p-3 rounded-xl mt-1 text-center tracking-tighter" placeholder="مثال: 989033708860" /></div>
                                 
                                 <button onClick={()=>setIsAdmin(false)} className="w-full bg-sky-600 py-4 rounded-xl font-bold mt-4">ذخیره و بازگشت</button>
                             </div>
@@ -158,7 +181,7 @@
                 <div className="min-h-screen p-4 flex flex-col items-center pt-10">
                     <header className="mb-10 text-center">
                         <h1 className="text-5xl font-black italic text-white">NEXT<span className="text-sky-500">VPN</span></h1>
-                        <p className="text-slate-500 text-[10px] mt-2 tracking-widest uppercase font-bold">Safe & Reliable Connection</p>
+                        <p className="text-slate-500 text-[10px] mt-2 tracking-widest uppercase font-bold">Premium Connection Services</p>
                     </header>
 
                     <div className="max-w-xl w-full glass rounded-[2.5rem] overflow-hidden shadow-2xl relative">
@@ -181,7 +204,7 @@
                                     </div>
                                     <div className="bg-slate-950/50 p-6 rounded-3xl border border-slate-800 flex justify-between items-center">
                                         <span className="text-xs text-slate-500 uppercase">مبلغ نهایی:</span>
-                                        <span className="text-2xl font-black text-sky-500">{totalPrice.toLocaleString()} تومان</span>
+                                        <span className="text-2xl font-black text-sky-500">{baseTotal.toLocaleString()} تومان</span>
                                     </div>
                                     <button onClick={()=>setStep(2)} className="w-full bg-sky-600 py-5 rounded-2xl font-bold shadow-lg shadow-sky-900/20 active:scale-95 transition-transform">تایید و ادامه</button>
                                 </div>
@@ -196,7 +219,7 @@
                                             value={contact} 
                                             onChange={(e)=>{setContact(e.target.value); setContactError(false);}} 
                                             placeholder="آیدی تلگرام یا شماره تماس" 
-                                            className={`w-full bg-slate-950 border ${contactError?'border-red-500 animate-shake':'border-slate-800'} p-5 rounded-2xl outline-none text-right transition-colors`}
+                                            className={`w-full bg-slate-950 border ${contactError?'border-red-500 animate-shake':'border-slate-800'} p-5 rounded-2xl outline-none text-right transition-colors tracking-wide`}
                                         />
                                         {contactError && <p className="text-red-500 text-[10px] mt-2 pr-2 font-bold">⚠️ وارد کردن آیدی یا شماره اجباری است</p>}
                                     </div>
@@ -208,13 +231,38 @@
                             {step === 3 && (
                                 <div className="space-y-6 animate-in text-right">
                                     <div className="bg-slate-950 p-6 rounded-[2rem] border border-slate-800 text-center space-y-3">
-                                        <div className="text-[10px] text-slate-500 uppercase">واریز به کارت</div>
-                                        <div className="text-3xl font-black text-sky-500">{totalPrice.toLocaleString()} تومان</div>
+                                        <div className="text-[10px] text-slate-500 uppercase">مبلغ قابل پرداخت</div>
+                                        <div className={`text-3xl font-black ${isPromoApplied ? 'text-emerald-500' : 'text-sky-500'}`}>
+                                            {finalPrice.toLocaleString()} تومان
+                                        </div>
+                                        {isPromoApplied && <div className="text-[10px] text-emerald-400 font-bold">تخفیف {config.promoPercent}% اعمال شد ✅</div>}
+                                        
                                         <div className="h-px bg-slate-800 my-4"></div>
+                                        
                                         <div className="text-lg font-bold tracking-widest select-all">{config.cardNumber}</div>
                                         <div className="text-xs text-slate-400">بنام: {config.cardName}</div>
                                         <button onClick={() => { copyToClipboard(); alert('شماره کارت کپی شد'); }} className="text-sky-500 text-[10px] underline">کپی شماره کارت</button>
                                     </div>
+
+                                    {/* Promotion Section */}
+                                    <div className="bg-slate-900/40 p-4 rounded-2xl border border-slate-800/50 flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            value={promoInput}
+                                            disabled={isPromoApplied}
+                                            onChange={(e) => setPromoInput(e.target.value)}
+                                            placeholder="کد تخفیف دارید؟" 
+                                            className="bg-slate-950 border border-slate-800 flex-1 rounded-xl px-4 text-xs outline-none focus:border-sky-500 transition-colors uppercase font-bold"
+                                        />
+                                        <button 
+                                            onClick={applyPromo}
+                                            disabled={isPromoApplied || !promoInput}
+                                            className={`px-6 py-3 rounded-xl text-xs font-bold transition-all ${isPromoApplied ? 'bg-emerald-600/20 text-emerald-500 border border-emerald-500/50' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                                        >
+                                            {isPromoApplied ? 'اعمال شد' : 'اعمال'}
+                                        </button>
+                                    </div>
+
                                     <div className="space-y-4">
                                         <div onClick={()=>document.getElementById('f').click()} className="border-2 border-dashed border-slate-800 rounded-3xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/20 transition-all">
                                             {previewUrl ? <img src={previewUrl} className="h-28 rounded-xl shadow-xl border border-slate-700" /> : 
@@ -228,19 +276,18 @@
                                     <button disabled={loading || !receiptImage} onClick={handleSubmit} className={`w-full py-5 rounded-2xl font-bold transition-all ${loading || !receiptImage ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-emerald-600 text-white active:scale-95'}`}>
                                         {loading ? "در حال ارسال اطلاعات..." : "ثبت و ارسال فیش"}
                                     </button>
-                                    <button onClick={()=>setStep(2)} className="w-full text-slate-500 text-xs">بازگشت</button>
+                                    <button onClick={()=>setStep(2)} className="w-full text-slate-500 text-xs text-center">بازگشت</button>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* دکمه‌های شناور */}
+                    {/* Floating Support & Admin */}
                     <div className="fixed bottom-6 left-6 flex flex-col items-center gap-3">
                         <button onClick={()=>setShowAdminLogin(true)} className="w-11 h-11 bg-slate-800/80 rounded-full flex items-center justify-center border border-slate-700 hover:bg-sky-600 transition-colors">
                             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </button>
                         
-                        {/* منوی پشتیبانی دوتایی */}
                         <div className="relative">
                             {showSupportMenu && (
                                 <div className="absolute bottom-14 left-0 w-44 glass rounded-2xl p-2 shadow-2xl animate-in support-menu flex flex-col gap-1 border-sky-500/50">
@@ -265,31 +312,30 @@
                         </div>
                     </div>
 
-                    {/* Error Modal */}
+                    {/* Modals */}
                     {showErrorModal && (
                         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[200] p-4 animate-in backdrop-blur-md">
                             <div className="glass p-8 rounded-[2.5rem] w-full max-w-sm text-center border-red-500/30">
                                 <div className="text-5xl mb-4">🌐</div>
-                                <h3 className="text-xl font-bold mb-4">خطا در اتصال به تلگرام</h3>
-                                <p className="text-slate-400 text-sm mb-6 leading-loose">ارسال فیش انجام نشد. احتمالاً فیلترشکن شما خاموش است. می‌توانید مجدد تلاش کنید یا مستقیم از طریق واتساپ ارسال کنید:</p>
+                                <h3 className="text-xl font-bold mb-4 text-white">خطا در ارسال</h3>
+                                <p className="text-slate-400 text-sm mb-6 leading-loose">ارسال فیش مستقیم به تلگرام با خطا مواجه شد. لطفاً فیلترشکن خود را بررسی کنید یا از طریق واتساپ ارسال کنید.</p>
                                 <div className="space-y-3">
-                                    <button onClick={()=>{setShowErrorModal(false); handleSubmit();}} className="w-full bg-slate-800 py-4 rounded-2xl font-bold">تلاش مجدد (فیلترشکن روشن)</button>
-                                    <button onClick={sendToWhatsapp} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-2">ارسال در واتساپ</button>
-                                    <button onClick={()=>setShowErrorModal(false)} className="w-full text-slate-500 text-xs py-2">بستن</button>
+                                    <button onClick={()=>{setShowErrorModal(false); handleSubmit();}} className="w-full bg-slate-800 py-4 rounded-2xl font-bold text-white">تلاش مجدد با VPN</button>
+                                    <button onClick={sendToWhatsapp} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-white">ارسال در واتساپ</button>
+                                    <button onClick={()=>setShowErrorModal(false)} className="w-full text-slate-500 text-xs py-2">انصراف</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Admin Login Modal */}
                     {showAdminLogin && (
                         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4 backdrop-blur-md">
                             <div className="glass p-6 rounded-3xl w-full max-w-xs text-center border-sky-500/30">
-                                <h4 className="mb-4 font-bold">پنل مدیریت</h4>
-                                <input type="password" value={adminPass} onChange={e=>setAdminPass(e.target.value)} placeholder="رمز عبور" className="w-full bg-slate-950 p-3 rounded-xl mb-4 text-center outline-none focus:border-sky-500 border border-slate-800" />
+                                <h4 className="mb-4 font-bold text-white text-sm">ورود به پنل مدیریت</h4>
+                                <input type="password" value={adminPass} onChange={e=>setAdminPass(e.target.value)} placeholder="رمز عبور" className="w-full bg-slate-950 p-3 rounded-xl mb-4 text-center outline-none focus:border-sky-500 border border-slate-800 text-white" />
                                 <div className="flex gap-2">
-                                    <button onClick={()=>{ if(adminPass==='mahdi1386'){setIsAdmin(true); setShowAdminLogin(false);} else alert('رمز اشتباه است'); }} className="flex-1 bg-sky-600 py-2 rounded-xl font-bold">ورود</button>
-                                    <button onClick={()=>setShowAdminLogin(false)} className="flex-1 bg-slate-800 py-2 rounded-xl font-bold">لغو</button>
+                                    <button onClick={()=>{ if(adminPass==='mahdi1386'){setIsAdmin(true); setShowAdminLogin(false); setAdminPass('');} else alert('رمز اشتباه است'); }} className="flex-1 bg-sky-600 py-2 rounded-xl font-bold text-white">ورود</button>
+                                    <button onClick={()=>{setShowAdminLogin(false); setAdminPass('');}} className="flex-1 bg-slate-800 py-2 rounded-xl font-bold text-white">لغو</button>
                                 </div>
                             </div>
                         </div>
